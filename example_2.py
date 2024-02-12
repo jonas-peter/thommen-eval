@@ -29,6 +29,7 @@ import pandas as pd
 from pathlib import Path
 import SimpleITK as sitk
 from skimage import measure
+import gc
 
 
 # %% Functions
@@ -283,12 +284,16 @@ def SegmentBone(Image, Sigma=0.02, Threshold=None, nThresholds=2, Mask=True, Clo
         Binarize.SetOutsideValue(255)
         Binarize.SetInsideValue(0)
         Bin = Binarize.Execute(Smooth)
+        del Smooth
+        gc.collect()
 
     else:
         # Segment image by thresholding using Otsu's method
         Otsu = sitk.OtsuMultipleThresholdsImageFilter()
         Otsu.SetNumberOfThresholds(nThresholds)
         Seg = Otsu.Execute(Smooth)
+        del Smooth
+        gc.collect()
 
         # Binarize image to keep bone only
         Binarize = sitk.BinaryThresholdImageFilter()
@@ -296,11 +301,15 @@ def SegmentBone(Image, Sigma=0.02, Threshold=None, nThresholds=2, Mask=True, Clo
         Binarize.SetOutsideValue(255)
         Binarize.SetInsideValue(0)
         Bin = Binarize.Execute(Seg)
+        del Seg
+        gc.collect()
 
     # Remove unconnected components
     Labels = sitk.ConnectedComponent(Bin)
     Sorted = sitk.RelabelComponent(Labels, sortByObjectSize=True)
     Bin = Sorted == 1
+    del Sorted, Labels
+    gc.collect()
 
     # Crop image to bone
     Array = sitk.GetArrayFromImage(Bin)
@@ -310,6 +319,8 @@ def SegmentBone(Image, Sigma=0.02, Threshold=None, nThresholds=2, Mask=True, Clo
     Z1, Z2 = int(Z.min()), int(Z.max())
     BinCrop = sitk.Slice(Bin, (X1, Y1, Z1), (X2, Y2, Z2))
     GrayCrop = sitk.Slice(Image, (X1, Y1, Z1), (X2, Y2, Z2))
+    del Bin, Array, X, Y, Z, X1, X2, Y1, Y2
+    gc.collect()
 
     # Pad images to avoid contact with border
     BinCrop = sitk.ConstantPad(BinCrop, (1, 1, 1), (1, 1, 1))
@@ -321,6 +332,8 @@ def SegmentBone(Image, Sigma=0.02, Threshold=None, nThresholds=2, Mask=True, Clo
         Close.SetForegroundValue(255)
         Close.SetKernelRadius(CloseSize)
         Closed = Close.Execute(BinCrop)
+        del Close
+        gc.collect()
 
         # Generate mask slice by slice
         Size = BinCrop.GetSize()
