@@ -2,6 +2,9 @@ data
 data_1
 data_2
 venv
+plots
+data_generated/*
+!data_generated/.keep
 .venv
 .idea
 .DS_Store

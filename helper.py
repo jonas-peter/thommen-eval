@@ -87,50 +87,29 @@ def get_it_df(dir_name: Path) -> pd.DataFrame:
     return df_it
 
 
-def get_uf_df(dir_name: Path) -> pd.DataFrame:
-    dfs_uf = list()
+def get_mts_df(dir_name: Path) -> pd.DataFrame:
+    dfs_mts = list()
     for file_name in dir_name.glob("*.csv"):
-        df_uf = pd.read_csv(file_name, header=1)
-        df_uf = df_uf[1:]  # Remove the first row to reindex the DataFrame
-        df_uf.reset_index(drop=True, inplace=True)  # Reset index if desired
-        df_uf["ID"] = file_name.stem
-        dfs_uf.append(df_uf)
+        df_mts = pd.read_csv(file_name, header=1)
+        df_mts = df_mts[1:]  # Remove the first row to reindex the DataFrame
+        df_mts.reset_index(drop=True, inplace=True)  # Reset index if desired
+        df_mts["ID"] = file_name.stem
+        dfs_mts.append(df_mts)
 
-    df_uf = pd.concat(dfs_uf)
-    df_uf.columns = [f.strip() for f in df_uf.columns]
+    df_mts = pd.concat(dfs_mts)
+    df_mts.columns = [f.strip() for f in df_mts.columns]
 
-    df_uf["Time"] = df_uf["Time"].astype(float)
-    df_uf["Axial Count"] = df_uf["Axial Count"].astype(float)
-    df_uf["Axial Force"] = -df_uf["Axial Force"].astype(float)
-    df_uf["Axial Displacement"] = df_uf["Axial Displacement"].astype(float)
+    df_mts["Time"] = df_mts["Time"].astype(float)
+    df_mts["Axial Count"] = df_mts["Axial Count"].astype(float)
+    df_mts["Axial Force"] = -df_mts["Axial Force"].astype(float)
+    df_mts["Axial Displacement"] = df_mts["Axial Displacement"].astype(float)
 
+    return df_mts
+
+
+def get_uf_df(dir_name: Path) -> pd.DataFrame:
+    df_uf = get_mts_df(dir_name)
     df_uf = df_uf.groupby("ID")["Axial Force"].max()
     df_uf.rename("UF", inplace=True)
 
     return df_uf
-
-
-def main():
-    strip_versioning(Path(__file__).parent / "data")
-
-    df_morpho = get_bone_morpho_df(Path("data/bone_morpho"))
-    df_samples = get_sample_df(Path("data"))
-    df_it = get_it_df(Path("data/it_ichiro"))
-    df_uf = get_uf_df(Path("data/uf"))
-
-    df = pd.merge(df_samples, df_morpho, on='MeasNoHighRes', how='outer')
-    df = pd.merge(df, df_it, on='ID', how='outer')
-    df = pd.merge(df, df_uf, on='ID', how='outer')
-
-    # remove unused samples todo:
-    df = df[df["selected"] == "yes"]
-
-    df = df.sort_values(by=["group", "BVTV"])
-
-    df.to_csv(Path("data/df_selected.csv"), index=False)
-
-    print("stop")
-
-
-if __name__ == "__main__":
-    main()
