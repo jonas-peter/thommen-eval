@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 import pandas as pd
 
-pd.options.plotting.backend = "plotly"
-
 
 def strip_versioning(file: Path) -> Path | None:
     if not file.exists():
@@ -90,15 +88,15 @@ def get_it_df(dir_name: Path) -> pd.DataFrame:
 
 
 def get_uf_df(dir_name: Path) -> pd.DataFrame:
-    dfs_it = list()
+    dfs_uf = list()
     for file_name in dir_name.glob("*.csv"):
-        df_it = pd.read_csv(file_name, header=1)
-        df_it = df_it[1:]  # Remove the first row to reindex the DataFrame
-        df_it.reset_index(drop=True, inplace=True)  # Reset index if desired
-        df_it["ID"] = file_name.stem
-        dfs_it.append(df_it)
+        df_uf = pd.read_csv(file_name, header=1)
+        df_uf = df_uf[1:]  # Remove the first row to reindex the DataFrame
+        df_uf.reset_index(drop=True, inplace=True)  # Reset index if desired
+        df_uf["ID"] = file_name.stem
+        dfs_uf.append(df_uf)
 
-    df_uf = pd.concat(dfs_it)
+    df_uf = pd.concat(dfs_uf)
     df_uf.columns = [f.strip() for f in df_uf.columns]
 
     df_uf["Time"] = df_uf["Time"].astype(float)
@@ -107,6 +105,7 @@ def get_uf_df(dir_name: Path) -> pd.DataFrame:
     df_uf["Axial Displacement"] = df_uf["Axial Displacement"].astype(float)
 
     df_uf = df_uf.groupby("ID")["Axial Force"].max()
+    df_uf.rename("UF", inplace=True)
 
     return df_uf
 
