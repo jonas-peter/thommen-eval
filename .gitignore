@@ -1,6 +1,7 @@
 data
 data_1
 data_2
+venv
 .venv
 .idea
 .DS_Store
