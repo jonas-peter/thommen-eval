@@ -12,7 +12,7 @@ if __name__ == "__main__":
     df_morpho = get_bone_morpho_df(Path("data/bone_morpho"))
     df_samples = get_sample_df(Path("data"))
     df_it = get_it_df(Path("data/it_ichiro"))
-    df_uf = get_uf_df(Path("data/uf"))
+    df_uf = get_uf_df(Path("data/mts"))
 
     df = pd.merge(df_samples, df_morpho, on='MeasNoHighRes', how='outer')
     df = pd.merge(df, df_it, on='ID', how='outer')

@@ -102,7 +102,7 @@ def get_mts_df(dir_name: Path) -> pd.DataFrame:
     df_mts["Time"] = df_mts["Time"].astype(float)
     df_mts["Axial Count"] = df_mts["Axial Count"].astype(float)
     df_mts["Axial Force"] = -df_mts["Axial Force"].astype(float)
-    df_mts["Axial Displacement"] = df_mts["Axial Displacement"].astype(float)
+    df_mts["Axial Displacement"] = -df_mts["Axial Displacement"].astype(float)
 
     return df_mts
 
