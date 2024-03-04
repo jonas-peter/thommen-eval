@@ -4,6 +4,7 @@ library(rstatix)
 library(broom)
 library(emmeans)
 
+# https://www.datanovia.com/en/lessons/ancova-in-r/
 
 ################################################################################
 #Functions
@@ -54,8 +55,8 @@ plot2setts <- function(x1,y1,x2,y2, xlable, ylable, col1, col2, lg1, lg2, titel)
   return(model1)
 }
 
-ancova_analysis <- function(daten, gruppe, dependent, independent){
-
+ancova_analysis <- function(daten, gruppe, dependent, independent)
+{
   daten$dependent_fit<-(daten[[dependent]])
   daten$independent_fit<-(daten[[independent]])
   daten$gruppe_fit <- (daten[[gruppe]])
@@ -64,7 +65,7 @@ ancova_analysis <- function(daten, gruppe, dependent, independent){
   plot1 <- ggscatter(
     daten, x = independent, y = dependent,
     color = gruppe, add = "reg.line"
-  )+
+  ) +
     stat_regline_equation(
       aes(label =  paste(..eq.label.., ..rr.label.., sep = "~~~~"), color = gruppe_fit)
     )
@@ -81,8 +82,8 @@ ancova_analysis <- function(daten, gruppe, dependent, independent){
   table3 <- shapiro_test(model.metrics$.resid)
 
   # ## Check for Homogenity of varainces:
-  # table4 <- model.metrics %>% levene_test(.resid ~ gruppe_fit)
-  table4 <- 1
+  table4 <- model.metrics %>% levene_test(.resid ~ gruppe_fit)
+  # table4 <- 1
 
   ## Check for Outliers
   table5 <- model.metrics %>% filter(abs(.std.resid) > 3) %>% as.data.frame()
@@ -96,7 +97,8 @@ ancova_analysis <- function(daten, gruppe, dependent, independent){
   library(emmeans)
   pwc <- daten %>%
     emmeans_test(
-      dependent_fit ~ gruppe_fit, covariate = independent_fit,
+      dependent_fit ~ gruppe_fit,
+      covariate = independent_fit,
       p.adjust.method = "bonferroni"
     )
   pwc1 <- pwc
@@ -107,7 +109,8 @@ ancova_analysis <- function(daten, gruppe, dependent, independent){
 
   # Visualization: line plots with p-values
   pwc <- pwc %>% add_xy_position(x = "gruppe_fit", fun = "mean_se")
-  plot2 <- ggline(get_emmeans(pwc), x = "gruppe_fit", y = "emmean") +
+  plot2 <-
+    ggline(get_emmeans(pwc), x = "gruppe_fit", y = "emmean") +
     geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
     stat_pvalue_manual(pwc, hide.ns = TRUE, tip.length = FALSE) +
     labs(

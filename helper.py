@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+from scipy import stats
 
 
 def strip_versioning(file: Path) -> Path | None:
@@ -58,7 +62,9 @@ def get_bone_morpho_df(dir_name: Path, version: int = 2) -> pd.DataFrame:
         vals.append(val)
 
     df_morpho = pd.DataFrame(vals, columns=["MeasNo", "VOX-BV/TV"])
-    df_morpho.rename(columns={"VOX-BV/TV": "BVTV", "MeasNo": "MeasNoHighRes"}, inplace=True)
+    df_morpho.rename(
+        columns={"VOX-BV/TV": "BVTV", "MeasNo": "MeasNoHighRes"}, inplace=True
+    )
     df_morpho["BVTV"] = df_morpho["BVTV"].astype(float)
     df_morpho["MeasNoHighRes"] = df_morpho["MeasNoHighRes"].astype(int)
     df_morpho = df_morpho.sort_values(by=["MeasNoHighRes"])
@@ -68,7 +74,7 @@ def get_bone_morpho_df(dir_name: Path, version: int = 2) -> pd.DataFrame:
 
 def get_sample_df(dir_name: Path) -> pd.DataFrame:
     df_samples = pd.read_excel(dir_name / "samples.xlsx")
-    df_samples = df_samples[['MeasNoHighRes', 'ID', "group", "selected"]]
+    df_samples = df_samples[["MeasNoHighRes", "ID", "group", "selected"]]
 
     return df_samples
 
@@ -79,10 +85,12 @@ def get_it_df(dir_name: Path) -> pd.DataFrame:
         dfs_it.append(pd.read_csv(file_name, delimiter=";"))
 
     df_it = pd.concat(dfs_it)
-    df_it.rename(columns={"Referenz": "ID", "Max. erreichtes Drehmoment": "IT"}, inplace=True)
+    df_it.rename(
+        columns={"Referenz": "ID", "Max. erreichtes Drehmoment": "IT"}, inplace=True
+    )
     df_it = df_it.groupby("ID", as_index=False).first()
 
-    df_it = df_it[['IT', 'ID']]
+    df_it = df_it[["IT", "ID"]]
 
     return df_it
 
@@ -108,8 +116,66 @@ def get_mts_df(dir_name: Path) -> pd.DataFrame:
 
 
 def get_uf_df(dir_name: Path) -> pd.DataFrame:
-    df_uf = get_mts_df(dir_name)
-    df_uf = df_uf.groupby("ID")["Axial Force"].max()
+    df_mts = get_mts_df(dir_name)
+    df_uf = df_mts.groupby("ID")["Axial Force"].max()
     df_uf.rename("UF", inplace=True)
 
     return df_uf
+
+
+def get_disp_at_max_df(dir_name: Path) -> pd.DataFrame:
+    df_mts = get_mts_df(dir_name).reset_index(drop=True)
+    idx = df_mts.groupby("ID")["Axial Force"].idxmax()
+    df_dm = df_mts.iloc[idx]
+    df_dm = df_dm[["ID", "Axial Displacement"]].set_index("ID").squeeze()
+    df_dm.rename("DM", inplace=True)
+
+    return df_dm
+
+
+def get_stiffness_df(dir_name: Path) -> pd.DataFrame:
+    df_mts = get_mts_df(dir_name)
+    gb = df_mts.groupby("ID")
+    id = list()
+    stiffness = list()
+
+    for x in gb.groups:
+        df = gb.get_group(x)
+        axial_change = df["Axial Displacement"].rolling(window=21).mean().to_numpy()
+        axial_change = (axial_change[1:] > axial_change[:-1]).astype(int)
+        axial_change = np.insert(axial_change, 0, [0, 0])
+        axial_change = pd.Series(axial_change)
+        axial_change = (
+            axial_change.rolling(window=21)
+            .mean()
+            .fillna(0)
+            .round(0)
+            .astype(int)
+            .to_numpy()
+        )
+        axial_change = (axial_change[1:] != axial_change[:-1]).astype(int)
+        axial_change = pd.Series(axial_change)
+        axial_change = axial_change.cumsum()
+
+        df = df[np.logical_and(axial_change > 7, axial_change < 13)].reset_index(
+            drop=True
+        )
+
+        x = df["Axial Displacement"]
+        y = df["Axial Force"]
+        res = stats.linregress(x, y)
+
+        stiffness.append(res.slope)
+        id.append(df["ID"][0])
+
+        # title = df['ID'][0]
+        # plt.plot(x, y, 'o', label='data' )
+        # plt.plot(x, res.intercept + res.slope * x, 'r', label='regression')
+        # plt.title = title
+        # plt.xlabel = 'Axial Displacement [mm]'
+        # plt.ylabel = 'Axial Force [N]'
+        # plt.legend()
+        # plt.show()
+
+    df_out = pd.DataFrame({"ID": id, "ST": stiffness})
+    return df_out
